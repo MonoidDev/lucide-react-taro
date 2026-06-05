@@ -1,0 +1,59 @@
+name: Publish @monoidtech/lucide-react-taro
+
+# Monoid-maintained release of the fork. Publishes the main library to npm under
+# the @monoidtech scope (renamed at publish time, so the repo stays unscoped and
+# the lockfile is untouched). Requires an NPM_TOKEN repo secret with publish
+# rights to the @monoidtech org.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'npm version to publish (e.g. 1.6.0)'
+        required: true
+        default: '1.6.0'
+      tag:
+        description: 'npm dist-tag'
+        required: false
+        default: 'latest'
+
+jobs:
+  publish:
+    # never run on the upstream repo if this workflow is ever merged there
+    if: github.repository == 'MonoidDev/lucide-react-taro'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Build library (fetch lucide 1.17.0 -> generate -> bundle)
+        run: pnpm --filter lucide-react-taro build
+
+      - name: Scope to @monoidtech and set version
+        working-directory: packages/lucide-react-taro
+        run: |
+          npm pkg set name="@monoidtech/lucide-react-taro"
+          npm pkg set version="${{ github.event.inputs.version }}"
+          # dist is already built above; drop prepublishOnly so publish doesn't rebuild,
+          # and drop devDependencies so the workspace: protocol isn't published.
+          npm pkg delete scripts.prepublishOnly
+          npm pkg delete devDependencies
+          echo "Publishing:" && npm pkg get name version
+
+      - name: Publish to npm
+        working-directory: packages/lucide-react-taro
+        run: npm publish --access public --tag "${{ github.event.inputs.tag }}"
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

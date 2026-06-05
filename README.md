@@ -121,7 +121,31 @@ import { LucideTaroProvider, House, Settings, Camera } from 'lucide-react-taro';
 </LucideTaroProvider>
 ```
 
-> **注意**：由于小程序端 SVG 是通过 Data URL 渲染的，图标无法从 CSS 继承父元素的文字颜色（`currentColor` 会回退为黑色）。建议通过 `LucideTaroProvider` 或 `color` prop 显式指定颜色。
+> **注意**：由于小程序端 SVG 是通过 Data URL 渲染的，图标无法从 CSS 继承父元素的文字颜色（`currentColor` 会回退为黑色）。请通过 `LucideTaroProvider` 或 `color` prop 显式指定颜色，或使用下方的主题颜色解析。
+
+#### 主题颜色与 CSS 变量解析（themeColors / cssVars / resolveColor）
+
+因为图标在渲染时就要把颜色烘焙进 Data URL，`color` 无法在运行时解析页面的 CSS 变量（`var(--x)`）。`LucideTaroProvider` 支持在渲染前把主题 token / CSS 变量解析为字面量颜色：
+
+```tsx
+import { LucideTaroProvider, House, Settings, Camera } from 'lucide-react-taro';
+
+<LucideTaroProvider
+  themeColors={{ primary: '#00b9ca', danger: '#f53f3f' }}
+  cssVars={{ '--color-primary': '#00b9ca' }}
+>
+  <House color="primary" />                  {/* 解析为 #00b9ca */}
+  <Settings color="var(--color-primary)" />  {/* 解析为 #00b9ca */}
+  <Camera color="#1890ff" />                 {/* 字面量原样使用 */}
+</LucideTaroProvider>
+```
+
+- `themeColors`：`token -> 字面量颜色` 映射；`color="token"` 命中后替换为字面量。
+- `cssVars`：`CSS 变量 -> 字面量颜色` 映射（键可带或不带 `--`）；`color="var(--x)"` 命中后替换，`var(--x, #fallback)` 支持回退值。
+- `resolveColor(input) => string | undefined`：自定义解析器，优先级最高。
+- 任意字面量颜色（hex / `rgb()` / 具名）始终原样透传，完全向后兼容。
+
+> 库还导出 `LUCIDE_VERSION` / `LUCIDE_COMMIT`，标记图标集对应的上游 lucide 版本与提交；并为 lucide 的别名（如 `Grid` → `Grid3x3`）生成导出，重命名/废弃名称仍可正常导入。
 
 ## API
 
@@ -274,12 +298,23 @@ pnpm dlx taro-lucide-show Heart -c "#ff3e98" -s 30
 # 安装依赖
 npm install
 
-# 完整构建
+# 完整构建（拉取 lucide 图标 → 生成 → 打包）
 npm run build
 
 # 运行测试
 npm test
 ```
+
+图标集从上游 lucide 仓库生成。`fetch-icons` 默认固定到某个 lucide 版本（tag），保证可复现：
+
+```bash
+# 在 packages/lucide-react-taro 下，更新到指定 lucide 版本后重新生成
+pnpm fetch-icons   # 默认 --lucide-ref 1.17.0（见该包 package.json 脚本）
+pnpm generate      # 重新生成图标、别名与 lucide-version.ts
+# 也可临时指定：lucide-react-taro-generate fetch-icons --package-dir . --lucide-ref <tag|branch|sha>
+```
+
+升级 lucide 版本时，修改 `fetch-icons` 脚本中的 `--lucide-ref` 即可；生成的 `src/lucide-version.ts` 会记录对应的版本与提交，便于审计。
 
 ### 项目结构
 
