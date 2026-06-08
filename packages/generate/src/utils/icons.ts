@@ -99,6 +99,30 @@ export function generateIndexFile(
     )
     .join('\n')
 
+  // Every icon and alias is ALSO exported with an `Icon` suffix, matching lucide-react
+  // (`House` is also exported as `HouseIcon`, so `HouseIcon === House`). This avoids
+  // import-name collisions with other libraries or your own code. Emitted as a trailing
+  // block so every name it references is already declared above; a suffixed name that
+  // would shadow an existing export is skipped.
+  const emitted = new Set<string>([
+    'createIcon',
+    'LucideTaroProvider',
+    'LUCIDE_VERSION',
+    'LUCIDE_COMMIT',
+    ...icons.map(icon => icon.componentName),
+    ...aliases.map(alias => alias.aliasComponent),
+  ])
+  const suffixLines: string[] = []
+  const addSuffixed = (name: string, target: string) => {
+    const suffixed = `${name}Icon`
+    if (emitted.has(suffixed)) return
+    emitted.add(suffixed)
+    suffixLines.push(`export const ${suffixed} = ${target};`)
+  }
+  for (const icon of icons) addSuffixed(icon.componentName, icon.componentName)
+  for (const alias of aliases) addSuffixed(alias.aliasComponent, alias.canonicalComponent)
+  const suffixExports = suffixLines.join('\n')
+
   const sourceComment = source
     ? `// Icons generated from lucide ${source.ref} (commit ${source.commit})\n`
     : ''
@@ -112,5 +136,5 @@ export type { LucideTaroProviderProps } from './context';
 export { LUCIDE_VERSION, LUCIDE_COMMIT } from './lucide-version';
 
 ${iconExports}
-${aliasExports ? `\n// --- Aliases: deprecated / alternative lucide names ---\n${aliasExports}\n` : ''}`
+${aliasExports ? `\n// --- Aliases: deprecated / alternative lucide names ---\n${aliasExports}\n` : ''}${suffixExports ? `\n// --- Icon-suffixed names (lucide-react parity: \`Foo\` is also exported as \`FooIcon\`) ---\n${suffixExports}\n` : ''}`
 }

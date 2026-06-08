@@ -146,6 +146,15 @@ import { LucideTaroProvider, House, Settings, Camera } from 'lucide-react-taro';
 - 任意字面量颜色（hex / `rgb()` / 具名）始终原样透传，完全向后兼容。
 
 > 库还导出 `LUCIDE_VERSION` / `LUCIDE_COMMIT`，标记图标集对应的上游 lucide 版本与提交；并为 lucide 的别名（如 `Grid` → `Grid3x3`）生成导出，重命名/废弃名称仍可正常导入。
+>
+> 另外，从包入口导入时，每个图标都额外提供一个带 `Icon` 后缀的同名别名（对齐 lucide-react，用于避免与其它库或你自己代码的命名冲突）：`House` 同时导出为 `HouseIcon`、`X` 同时导出为 `XIcon`，二者完全等价（`HouseIcon === House`）。别名也带后缀（如 `Grid` → `GridIcon`）。
+>
+> 注意：按需深导入路径 `lucide-react-taro/icons/<name>` 仅导出规范名（如 `House`），不含 `Icon` 后缀别名 —— 与 lucide-react 行为一致。
+
+```tsx
+// 以下导入指向同一个组件
+import { House, HouseIcon } from 'lucide-react-taro';
+```
 
 ## API
 
